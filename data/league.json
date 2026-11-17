@@ -1,0 +1,126 @@
+{
+ "league_id": 455752333,
+ "season": 2027,
+ "pulled_nz": "2026-11-18T12:30",
+ "current_matchup_period": 5,
+ "current_scoring_period": 29,
+ "teams": {
+  "CAN": "Canterbury Earthshakers",
+  "AKL": "Auckland Marauders",
+  "MAR": "Marlborough Megabytes",
+  "SOU": "Southland Aphros",
+  "MAN": "Manawatu Windstorm",
+  "WLG": "Wellington Taniwha",
+  "TAS": "Te Tai-o-Aorere Skywalkers",
+  "NTH": "Northland Kauri",
+  "HWK": "Hawkes Bay Gannets",
+  "OTG": "Wanaka Wukongs"
+ },
+ "standings": {
+  "CAN": [
+   3,
+   1,
+   0
+  ],
+  "AKL": [
+   3,
+   1,
+   0
+  ],
+  "MAR": [
+   3,
+   1,
+   0
+  ],
+  "SOU": [
+   3,
+   1,
+   0
+  ],
+  "MAN": [
+   2,
+   2,
+   0
+  ],
+  "WLG": [
+   2,
+   2,
+   0
+  ],
+  "TAS": [
+   2,
+   2,
+   0
+  ],
+  "NTH": [
+   1,
+   3,
+   0
+  ],
+  "HWK": [
+   1,
+   3,
+   0
+  ],
+  "OTG": [
+   0,
+   4,
+   0
+  ]
+ },
+ "season_adds": {
+  "CAN": 12,
+  "AKL": 7,
+  "MAR": 4,
+  "SOU": 5,
+  "MAN": 7,
+  "WLG": 9,
+  "TAS": 3,
+  "NTH": 9,
+  "HWK": 4,
+  "OTG": 3
+ },
+ "divisions": {
+  "TE IKA-A-MAUI": [
+   "AKL",
+   "MAN",
+   "WLG",
+   "NTH",
+   "HWK"
+  ],
+  "TE WAIPOUNAMU": [
+   "CAN",
+   "MAR",
+   "SOU",
+   "TAS",
+   "OTG"
+  ]
+ },
+ "rules": {
+  "regular_season_weeks": 20,
+  "playoff_teams": 4,
+  "playoff_round_weeks": 2,
+  "adds_season": 40,
+  "adds_per_matchup": 6,
+  "waiver_days": 1,
+  "note": "playoff format assumed until league_settings() verifies it"
+ },
+ "northland": {
+  "multi_year": [
+   "Tyrese Haliburton",
+   "Cooper Flagg",
+   "Scottie Barnes",
+   "Amen Thompson",
+   "Aaron Gordon",
+   "Jarrett Allen",
+   "Kel'el Ware"
+  ],
+  "stream_budget": {
+   "weeks": "6-20",
+   "streams": 19,
+   "reserve_injury": 6,
+   "reserve_playoffs": 6,
+   "streams_used": 0
+  }
+ }
+}

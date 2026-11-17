@@ -1,0 +1,7 @@
+logged_nz,decision_id,decision,recommended,alternatives_considered,evidence,confidence,action_taken,outcome,grade_process,lesson
+2026-11-18T11:40,D-001,Week 5 streaming,No adds this week,"best 1-add +2.1pts (4.1->6.2%); best 2-add +2.3pts","week5_moves sim 6000x; 35 v 40 capped games",high,,,,
+2026-11-18T11:40,D-002,Jerome IR return drop,Drop Alex Caruso (OKC) when Jerome cleared,"Wiggins (tie long-run .371 v .371; wk5 3.8% v 4.7%)","ros2 single-drop sim; week5_moves",medium,,,,
+2026-11-18T11:40,D-003,Haliburton IR return drop,Drop Aaron Wiggins (ATL),"27 other 1Y pairs","Caruso+Wiggins rank 1 in 6/6 scenarios; median .437 v next .400",high,,,,
+2026-11-18T11:40,D-004,Free-agent upgrade,Hold - no FA improves best 13,"22 FAs x 6 drops = 132 swaps, best -1.3pts (Poeltl for LaVine)","ros2 FA scan",high,,,,
+2026-11-18T11:40,D-005,Acquisition policy,Move from no-streaming to targeted streaming ~1-1.5 adds/wk in winnable weeks (25-75%),"status quo 15% playoffs; +3% vol 31%; +4.5% 40%","season_sim 20k; 31 adds left / 16 wks",medium (season model uncalibrated),Adopted by Matt 18 Nov 11:32 NZ,,,
+2026-11-18T11:40,D-006,Trade target,Offer Nembhard or LaVine 1-for-1 for Donovan Clingan (TAS),"Okongwu (HWK) +2.1; WCJ (WLG) +1.0; Gobert/Gafford/Turner/Lopez/Sarr lower","trades.py paired sims (2 seeds); TAS weak AST/PTS/3PM, big surplus",medium,Matt agreed to send (Nembhard first) 18 Nov,,,
