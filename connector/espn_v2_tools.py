@@ -13,14 +13,26 @@ Accepted names (first one found wins):
     SWID     | swid    | ESPN_SWID
     LEAGUE_ID| ESPN_LEAGUE_ID          (default 455752333)
     SEASON   | ESPN_SEASON | YEAR      (default 2027)
+    SEASON_DAY1                        (default 2026-10-20 = US date of scoring period 1; verified 18 Nov 2026:
+                                        period 35 = 23 Nov US)
 
 Tools added (all read-only; nothing here can change your team or league):
     nba_schedule(start_date, end_date)   every NBA game in a date range (US dates), with ESPN scoring period
     league_settings()                    playoff format, matchup periods, add limits, trade deadline, roster slots
-    player_gamelog(name, last_n)         per-game box scores this season
+    player_gamelog(name, last_n)         per-game box scores this season (with US date)
     prior_season(name)                   2025-26 per-game averages
-    transactions_history(from_period, to_period)   every add/drop/trade by scoring period
+    transactions_history(from_period, to_period, include_all)
+                                         adds, drops, waiver claims and trades by scoring period (lineup moves,
+                                         draft picks and future-roster edits only with include_all=True)
     espn_debug(name)                     raw stat-split metadata for one player (used once to verify the parsers)
+
+v2.1 (18 Nov 2026, after the first live test):
+    - transactions_history: was returning every lineup move, draft pick and FUTURE_ROSTER edit (584 rows for
+      periods 1-3, of which 15 were real adds/drops). Now returns only adds/drops/waivers/trades by default,
+      filters by the transaction's own scoring period, names teams by abbreviation and adds NZ time.
+    - league_settings: lineup slots named (PG, SG, ... UTIL, BE, IR); per-matchup add limit fixed at 7 (Matt, 18 Nov;
+      ESPN's matchupAcquisitionLimit reads 1.0 and is not the cap); raw acquisition settings included.
+    - player_gamelog: each game carries its US date.
 """
 from __future__ import annotations
 import os, json, time, datetime as dt
@@ -36,7 +48,11 @@ PRO_TEAM = {0: "FA", 1: "ATL", 2: "BOS", 3: "NOP", 4: "CHI", 5: "CLE", 6: "DAL",
             10: "HOU", 11: "IND", 12: "LAC", 13: "LAL", 14: "MIA", 15: "MIL", 16: "MIN", 17: "BKN", 18: "NYK",
             19: "ORL", 20: "PHL", 21: "PHO", 22: "POR", 23: "SAC", 24: "SAS", 25: "OKC", 26: "UTA", 27: "WAS",
             28: "TOR", 29: "MEM", 30: "CHA"}
+SLOT = {"0": "PG", "1": "SG", "2": "SF", "3": "PF", "4": "C", "5": "G", "6": "F", "7": "SG/SF", "8": "G/F",
+        "9": "PF/C", "10": "F/C", "11": "UTIL", "12": "BE", "13": "IR", "14": "Rookie"}
 ACQ = {"ADD": "ADDED", "DROP": "DROPPED", "LINEUP": "MOVED"}
+# transaction types that are real roster changes (everything else is lineup shuffling, draft or keeper admin)
+REAL_TX = {"FREEAGENT", "WAIVER", "WAIVER_ERROR", "TRADE_ACCEPT", "TRADE_UPHOLD", "TRADE_PROPOSAL", "ROSTER"}
 
 
 def _env(*names, default=None):
@@ -53,6 +69,15 @@ def _cfg():
                "SWID": _env("SWID", "swid", "ESPN_SWID", default="")}
     base = f"https://lm-api-reads.fantasy.espn.com/apis/v3/games/fba/seasons/{season}"
     return season, league, cookies, base
+
+
+def _day1():
+    return dt.date.fromisoformat(_env("SEASON_DAY1", default="2026-10-20"))
+
+
+def period_date(sp: int, day1: Optional[dt.date] = None) -> str:
+    """US calendar date of an ESPN scoring period (period 1 = day1)."""
+    return ((day1 or _day1()) + dt.timedelta(days=sp - 1)).isoformat()
 
 
 def _get(url, params=None, filt=None, tries=3):
@@ -94,6 +119,7 @@ def parse_settings(payload):
     sch = s.get("scheduleSettings", {}); acq = s.get("acquisitionSettings", {}); tr = s.get("tradeSettings", {})
     ros = s.get("rosterSettings", {})
     dl = tr.get("deadlineDate")
+    slots = {SLOT.get(str(k), str(k)): v for k, v in (ros.get("lineupSlotCounts") or {}).items() if v}
     return {
         "name": s.get("name"),
         "regular_season_matchup_periods": sch.get("matchupPeriodCount"),
@@ -103,10 +129,14 @@ def parse_settings(payload):
         "playoff_seeding_tiebreaker": sch.get("playoffSeedingRuleBy"),
         "matchup_periods": sch.get("matchupPeriods"),
         "acquisition_limit_season": acq.get("acquisitionLimit"),
-        "acquisition_limit_per_matchup": acq.get("matchupAcquisitionLimit"),
+        # League rule (Matt, 18 Nov 2026): 7 adds per matchup. ESPN's matchupAcquisitionLimit field reads 1.0
+        # for this league, so it is NOT the per-matchup add cap; shown raw only, never as the limit.
+        "acquisition_limit_per_matchup": 7,
+        "acquisition_settings_raw": acq,
         "waiver_hours": acq.get("waiverHours"),
         "trade_deadline_utc": dt.datetime.fromtimestamp(dl / 1000, tz=dt.timezone.utc).isoformat() if dl else None,
-        "lineup_slot_counts": ros.get("lineupSlotCounts"),
+        "trade_deadline_nz": dt.datetime.fromtimestamp(dl / 1000, tz=NZ).strftime("%a %d %b %Y %H:%M") if dl else None,
+        "lineup_slot_counts": slots,
         "scoring_type": s.get("scoringSettings", {}).get("scoringType"),
     }
 
@@ -119,14 +149,15 @@ def _line(stats):
     return d
 
 
-def parse_gamelog(card, season, last_n):
-    """per-game entries: actual stats (statSourceId 0) for one scoring period (scoringPeriodId > 0)."""
+def parse_gamelog(card, season, last_n, day1: Optional[dt.date] = None):
+    """per-game entries: actual stats (statSourceId 0, statSplitTypeId 5) for one scoring period (> 0)."""
     games = []
     for st in card.get("player", {}).get("stats", []):
         if st.get("seasonId") != season or st.get("statSourceId") != 0: continue
+        if st.get("statSplitTypeId", 5) != 5: continue
         sp = st.get("scoringPeriodId", 0)
         if sp and sp > 0 and st.get("stats"):
-            line = _line(st["stats"]); line["scoring_period"] = sp
+            line = _line(st["stats"]); line["scoring_period"] = sp; line["us_date"] = period_date(sp, day1)
             if line.get("MIN", 0) or line.get("FGA", 0) or line.get("PTS", 0): games.append(line)
     games.sort(key=lambda g: -g["scoring_period"])
     return games[:last_n]
@@ -144,20 +175,35 @@ def parse_prior(card, season):
     return None
 
 
-def parse_transactions(payload, names):
+def parse_transactions(payload, names, teams=None, from_period=None, to_period=None, include_all=False):
+    """Executed roster transactions. Default: only adds, drops, waiver claims and trades (no lineup moves,
+    draft picks or FUTURE_ROSTER edits). Filters on the transaction's own scoringPeriodId when given."""
+    teams = teams or {}
     out = []
     for t in payload.get("transactions", []):
         if t.get("status") != "EXECUTED": continue
+        sp = t.get("scoringPeriodId")
+        if sp is not None and from_period is not None and to_period is not None and not (from_period <= sp <= to_period):
+            continue
+        ttype = t.get("type")
+        if not include_all and ttype not in REAL_TX: continue
         when = dt.datetime.fromtimestamp(t.get("processDate", t.get("proposedDate", 0)) / 1000, tz=dt.timezone.utc)
         for it in t.get("items", []):
-            out.append({"utc": when.isoformat(), "type": t.get("type"), "action": ACQ.get(it.get("type"), it.get("type")),
+            if not include_all and it.get("type") not in ("ADD", "DROP"): continue
+            fr, to = it.get("fromTeamId"), it.get("toTeamId")
+            out.append({"utc": when.isoformat(timespec="seconds"),
+                        "nz": when.astimezone(NZ).strftime("%a %d %b %H:%M"),
+                        "scoring_period": sp, "type": ttype,
+                        "action": ACQ.get(it.get("type"), it.get("type")),
                         "player": names.get(it.get("playerId"), it.get("playerId")),
-                        "from_team": it.get("fromTeamId"), "to_team": it.get("toTeamId")})
+                        "from_team": "FA" if not fr else teams.get(fr, fr),
+                        "to_team": "FA" if not to else teams.get(to, to)})
     return out
 
 
 # ------------------------------------------------------------------ fetch helpers
 _PLAYERS = {"t": 0, "map": {}}
+_TEAMS = {"t": 0, "map": {}}
 
 
 def _player_index():
@@ -168,6 +214,15 @@ def _player_index():
         _PLAYERS["map"] = {p["id"]: p["fullName"] for p in data}
         _PLAYERS["t"] = time.time()
     return _PLAYERS["map"]
+
+
+def _team_index():
+    if time.time() - _TEAMS["t"] > 6 * 3600 or not _TEAMS["map"]:
+        _, league, _, base = _cfg()
+        data = _get(f"{base}/segments/0/leagues/{league}", params={"view": "mTeam"})
+        _TEAMS["map"] = {t["id"]: t.get("abbrev") or t.get("name") or str(t["id"]) for t in data.get("teams", [])}
+        _TEAMS["t"] = time.time()
+    return _TEAMS["map"]
 
 
 def _player_id(name):
@@ -201,13 +256,13 @@ def register(mcp):
 
     @mcp.tool()
     def league_settings() -> dict:
-        """League rules from ESPN: regular-season length, playoff teams and round length, seeding tiebreaker, add limits (season and per matchup), waiver hours, trade deadline, roster slots."""
+        """League rules from ESPN: regular-season length, playoff teams and round length, seeding tiebreaker, add limits (season and per matchup), waiver hours, trade deadline (UTC and NZ), roster slots by name."""
         season, league, _, base = _cfg()
         return parse_settings(_get(f"{base}/segments/0/leagues/{league}", params={"view": "mSettings"}))
 
     @mcp.tool()
     def player_gamelog(name: str, last_n: int = 10) -> dict:
-        """Per-game box scores this season for one player (newest first): MIN, PTS, REB, AST, STL, BLK, TO, 3PM, FGM/FGA, FTM/FTA, scoring period."""
+        """Per-game box scores this season for one player (newest first): US date, MIN, PTS, REB, AST, STL, BLK, TO, 3PM, FGM/FGA, FTM/FTA, scoring period."""
         pid, full = _player_id(name); season = _cfg()[0]
         return {"name": full, "games": parse_gamelog(_card(pid), season, last_n)}
 
@@ -218,17 +273,17 @@ def register(mcp):
         return {"name": full, "season": season - 1, "per_game": parse_prior(_card(pid), season)}
 
     @mcp.tool()
-    def transactions_history(from_period: int = 1, to_period: Optional[int] = None) -> dict:
-        """Every executed add, drop and trade in the league between two scoring periods (days), oldest first."""
+    def transactions_history(from_period: int = 1, to_period: Optional[int] = None, include_all: bool = False) -> dict:
+        """Executed adds, drops, waiver claims and trades in the league between two scoring periods (days), oldest first, with team abbreviations and NZ time. include_all=True also returns lineup moves, draft picks and keeper edits (large)."""
         season, league, _, base = _cfg()
         if to_period is None:
             to_period = _get(f"{base}/segments/0/leagues/{league}", params={"view": "mStatus"}).get("scoringPeriodId", from_period)
-        names = _player_index(); out = []
+        names = _player_index(); teams = _team_index(); out = []
         for sp in range(from_period, to_period + 1):
             data = _get(f"{base}/segments/0/leagues/{league}", params={"view": "mTransactions2", "scoringPeriodId": sp})
-            out.extend(parse_transactions(data, names))
+            out.extend(parse_transactions(data, names, teams, from_period, to_period, include_all))
         uniq = {(o["utc"], o["player"], o["action"]): o for o in out}
-        return {"transactions": sorted(uniq.values(), key=lambda o: o["utc"])}
+        return {"transactions": sorted(uniq.values(), key=lambda o: o["utc"]), "count": len(uniq)}
 
     @mcp.tool()
     def espn_debug(name: str) -> dict:
