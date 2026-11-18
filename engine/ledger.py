@@ -5,7 +5,8 @@ import numpy as np
 from .core import CATS
 
 FORECAST_COLS = ["logged_nz", "week", "team", "opp", "p_win"] + [f"p_{c}" for c in CATS] + \
-                ["games_us", "games_opp", "outcome", "cat_outcomes", "brier_match", "brier_cats"]
+                ["games_us", "games_opp", "outcome", "cat_outcomes", "brier_match", "brier_cats", "stage"]
+# stage: "pre" = Tuesday pre-week forecast (the one calibration is judged on); "mid" = mid-week update
 
 
 def append_forecast(path, row):
@@ -43,9 +44,11 @@ def score_week(path, week, outcome, cat_outcomes):
     return done
 
 
-def reliability(path, bins=(0, .2, .4, .6, .8, 1.0001)):
-    """calibration table over all scored match forecasts: bin -> (n, mean forecast, observed rate)."""
-    rows = [r for r in csv.DictReader(open(path)) if r["outcome"] != ""]
+def reliability(path, bins=(0, .2, .4, .6, .8, 1.0001), stage="pre"):
+    """calibration table over scored match forecasts of one stage ("pre", "mid" or None for all):
+    bin -> (n, mean forecast, observed rate). Rows without a stage are pre-week forecasts."""
+    rows = [r for r in csv.DictReader(open(path)) if r["outcome"] != ""
+            and (stage is None or (r.get("stage") or "pre") == stage)]
     out = []
     for lo, hi in zip(bins[:-1], bins[1:]):
         b = [r for r in rows if lo <= float(r["p_win"]) < hi]

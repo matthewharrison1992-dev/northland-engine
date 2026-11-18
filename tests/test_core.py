@@ -63,3 +63,23 @@ def test_season_sim_runs():
     res = core.season_sim(fx, st, mean, resid, 5, n=2000)
     assert abs(sum(r["playoffs"] for r in res.values()) - 4) < 1e-6
     assert abs(sum(r["title"] for r in res.values()) - 1) < 1e-6
+
+
+def test_fill_in_swaps_for_ruled_out_starter():
+    # planned sits still start if a starter is ruled out before lock; a hard force_bench does not
+    team = [P(f"t{i}", ["PG", "SG", "SF", "PF", "C"]) for i in range(11)]
+    opp = [P("o0", ["C"])]
+    pool = team + opp
+    pri = core.pool_priors(pool + [P("g", ["PG"]), P("w", ["SF"])])
+    projs = {p.name: core.project(p, pri) for p in pool}
+    pp = {p.name: [1.0] for p in pool}
+    pp["t0"] = [0.0]  # starter ruled out
+    live = {"A": {}, "B": {}}
+    kw = dict(n=400, seed=5, scratch=0.0)
+    soft = core.sim_week(team, opp, projs, pri, [{"BOS"}], pp, live, fill_in={0: {"t10"}}, **kw)
+    hard = core.sim_week(team, opp, projs, pri, [{"BOS"}], pp, live, force_bench={0: {"t10"}}, **kw)
+    assert soft["proj"]["A"]["PTS"] > hard["proj"]["A"]["PTS"] * 1.05  # 10 starters v 9
+    pp["t0"] = [1.0]  # everyone healthy: the sit stays on the bench either way
+    soft = core.sim_week(team, opp, projs, pri, [{"BOS"}], pp, live, fill_in={0: {"t10"}}, **kw)
+    hard = core.sim_week(team, opp, projs, pri, [{"BOS"}], pp, live, force_bench={0: {"t10"}}, **kw)
+    assert abs(soft["proj"]["A"]["PTS"] / hard["proj"]["A"]["PTS"] - 1) < 0.02  # same 10 (draws differ slightly)

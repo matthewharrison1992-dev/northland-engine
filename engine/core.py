@@ -231,10 +231,13 @@ def compare(a, b):
 
 
 def sim_week(team_players, opp_players, projs, pri, games_by_day, play_prob, live, n=20000, seed=1,
-             force_bench=None, scratch=0.05):
+             force_bench=None, scratch=0.05, fill_in=None):
     """games_by_day: list of sets of NBA teams playing each remaining day.
     play_prob[name] -> list per day (prob of being active that day; known before lock).
     live: {"A": raw totals so far, "B": raw totals so far} (keys from RAW).
+    force_bench {day: names}: hard bench (never starts that day, e.g. a ratio-protection sit).
+    fill_in {day: names}: planned sits that still swap in if a starter is ruled out before lock
+    (how an ESPN bench actually works; use this to compare sit choices).
     Lineup each day = best legal 10 among available; then a late-scratch prob for ACTIVE starters (no replacement)."""
     rng = np.random.default_rng(seed)
     tot = {}
@@ -246,6 +249,8 @@ def sim_week(team_players, opp_players, projs, pri, games_by_day, play_prob, liv
             playing = [p for p in roster if p.nba in teams and play_prob[p.name][d] > 0
                        and not (force_bench and p.name in force_bench.get(d, set()))]
             if not playing: continue
+            sits = set(fill_in.get(d, ())) if (fill_in and side == "A") else set()
+            val_d = {k: (v - 1e3 if k in sits else v) for k, v in val.items()}
             avail = np.stack([rng.random(n) < play_prob[p.name][d] for p in playing], 1)
             keys = np.packbits(avail, axis=1); kk = [bytes(k) for k in keys]
             cache = {}
@@ -253,7 +258,7 @@ def sim_week(team_players, opp_players, projs, pri, games_by_day, play_prob, liv
             for i, k in enumerate(kk):
                 if k not in cache:
                     names = [p.name for j, p in enumerate(playing) if avail[i, j]]
-                    ch, _ = best_lineup(names, pos, val)
+                    ch, _ = best_lineup(names, pos, val_d)
                     cache[k] = np.array([p.name in ch for p in playing])
                 start[i] = cache[k]
             start &= rng.random(start.shape) > scratch

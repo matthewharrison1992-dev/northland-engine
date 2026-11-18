@@ -1,2 +1,3 @@
-logged_nz,week,team,opp,p_win,p_FG,p_FT,p_3PM,p_REB,p_AST,p_STL,p_BLK,p_TO,p_PTS,games_us,games_opp,outcome,cat_outcomes,brier_match,brier_cats
-2026-11-18T11:40,5,NTH,HWK,0.04,,,,,,,,,,35,40,,,,
+logged_nz,week,team,opp,p_win,p_FG,p_FT,p_3PM,p_REB,p_AST,p_STL,p_BLK,p_TO,p_PTS,games_us,games_opp,outcome,cat_outcomes,brier_match,brier_cats,stage
+2026-11-18T11:40,5,NTH,HWK,0.04,,,,,,,,,,35,40,,,,,pre
+2026-11-18T19:30,5,NTH,HWK,0.104,0.81,0.84,0.118,0.003,0.076,0.192,0.23,0.94,0.038,36,42,,,,,mid
