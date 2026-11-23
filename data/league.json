@@ -1,9 +1,9 @@
 {
  "league_id": 455752333,
  "season": 2027,
- "pulled_nz": "2026-11-18T12:30",
- "current_matchup_period": 5,
- "current_scoring_period": 29,
+ "pulled_nz": "2026-11-24T06:45",
+ "current_matchup_period": 6,
+ "current_scoring_period": 35,
  "teams": {
   "CAN": "Canterbury Earthshakers",
   "AKL": "Auckland Marauders",
@@ -17,68 +17,68 @@
   "OTG": "Wanaka Wukongs"
  },
  "standings": {
+  "AKL": [
+   4,
+   1,
+   0
+  ],
   "CAN": [
    3,
-   1,
-   0
-  ],
-  "AKL": [
-   3,
-   1,
-   0
-  ],
-  "MAR": [
-   3,
-   1,
+   2,
    0
   ],
   "SOU": [
    3,
-   1,
-   0
-  ],
-  "MAN": [
-   2,
    2,
    0
   ],
   "WLG": [
-   2,
+   3,
    2,
    0
   ],
   "TAS": [
-   2,
+   3,
    2,
    0
   ],
-  "NTH": [
-   1,
+  "MAR": [
    3,
+   2,
    0
   ],
   "HWK": [
-   1,
+   2,
+   3,
+   0
+  ],
+  "MAN": [
+   2,
    3,
    0
   ],
   "OTG": [
-   0,
+   1,
+   4,
+   0
+  ],
+  "NTH": [
+   1,
    4,
    0
   ]
  },
  "season_adds": {
-  "CAN": 12,
-  "AKL": 7,
+  "CAN": 15,
+  "AKL": 8,
   "MAR": 4,
-  "SOU": 5,
+  "SOU": 6,
   "MAN": 7,
-  "WLG": 9,
+  "WLG": 10,
   "TAS": 3,
-  "NTH": 9,
-  "HWK": 4,
-  "OTG": 3
+  "NTH": 10,
+  "HWK": 10,
+  "OTG": 4
  },
  "divisions": {
   "TE IKA-A-MAUI": [
@@ -120,7 +120,7 @@
    "streams": 19,
    "reserve_injury": 6,
    "reserve_playoffs": 6,
-   "streams_used": 0
+   "streams_used": 1
   }
  }
 }
