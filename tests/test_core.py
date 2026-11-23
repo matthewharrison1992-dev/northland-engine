@@ -48,7 +48,7 @@ def test_data_files_consistent():
     assert all(len(set(t)) == 10 for t in weeks.values())
     wt = list(csv.DictReader(open(os.path.join(D, "weekly_totals.csv"))))
     rows, target = core.league_week_matrix(wt)
-    assert len(rows) == 40
+    assert len(rows) >= 40 and len(rows) % 10 == 0  # 10 team rows per completed week
     # all-play: NTH week 3 was 0 all-play wins (lessons 10 Nov)
     assert core.actual_allplay(wt, 3, "NTH") == 0
 
