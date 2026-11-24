@@ -83,3 +83,19 @@ def test_fill_in_swaps_for_ruled_out_starter():
     soft = core.sim_week(team, opp, projs, pri, [{"BOS"}], pp, live, fill_in={0: {"t10"}}, **kw)
     hard = core.sim_week(team, opp, projs, pri, [{"BOS"}], pp, live, force_bench={0: {"t10"}}, **kw)
     assert abs(soft["proj"]["A"]["PTS"] / hard["proj"]["A"]["PTS"] - 1) < 0.02  # same 10 (draws differ slightly)
+
+
+def test_games_planner_counts_cap_and_swaps():
+    from engine import games
+    # 11 guards/wings on team A (plays day 0 and 1); one PF on team B plays day 1 only
+    ro = [P(f"g{i}", ["PG", "SG"], "AAA") for i in range(6)] + [P(f"w{i}", ["SF"], "AAA") for i in range(5)]
+    fa = [P("pf", ["PF"], "BBB"), P("c", ["C"], "CCC")]
+    days = [{"AAA", "CCC"}, {"AAA", "BBB"}, {"CCC"}]
+    h = {p.name: [1.0, 1.0, 1.0] for p in ro + fa}
+    val = {p.name: 1.0 for p in ro + fa}
+    _, per_day = games.expected_starts(ro, days, h, val, n=20)
+    assert per_day == [8.0, 8.0, 0.0]            # no PF and no C: only 8 of 10 slots fillable
+    mg = games.marginal_games(ro, days, h, val)
+    assert all(abs(v) < 1e-9 for v in mg.values())  # 11 players for 8 usable slots: nobody adds games
+    sw, base = games.best_swaps(ro, fa, ["g0"], days, h, val, n=20)
+    assert sw[0]["add"] == "c" and abs(sw[0]["gain"] - 2.0) < 1e-9   # C fills the empty C slot day 0 and plays day 2 (PF only +1)

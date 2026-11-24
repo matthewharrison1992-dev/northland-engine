@@ -15,6 +15,8 @@ Nothing here can change the ESPN team; every transaction is Matt's.
 | `data/league.json` | Standings, adds used, divisions, rules, Northland contracts, stream budget. |
 | `data/forecast_log.csv` | Pre-week forecasts and their scores (Brier). |
 | `data/decision_log.csv` | Recommendations, alternatives, evidence, confidence, what Matt did, outcome. |
+| `engine/games.py` | Games planner: capped, position-legal usable games by day, each player's marginal games, best single add/drop swaps (with the best switch day) and two-add relays through one roster spot. |
+| `scripts/games_plan.py` | `python -m scripts.games_plan SNAP SCHED.json --from K --opp ABBR [--longrun]`: games table both sides, marginal games, best swaps/relays, paired win % before/after, long-run all-play cost. Monday = next-week plan (`--from 0`). |
 | `scripts/season_odds.py` | `python -m scripts.season_odds <week> --override NTH=<p_win this week>` |
 | `tests/` | `python -m pytest -q` |
 
@@ -39,3 +41,9 @@ Streaming policy (adopted 18 Nov 2026): stream only when the week is 25–75% an
 - `team_week_dist(..., schedules=)` can use the real NBA schedule from `nba_schedule()`.
 - `season_sim(..., mean_override=)` tests trades as paired deltas; `actual_allplay()` added.
 - Check: `season_odds 5 --override NTH=0.04` reproduces the 18 Nov odds (AKL 96%, CAN 82%, MAR 69%, NTH 15%).
+
+## Games-maximisation routine (adopted 24 Nov 2026)
+- **Stream slot**: the 1-year player with the lowest long-run cost to replace (team_week_dist all-play v the best stream-level free agent). Streams rotate through this spot, so each stream costs an add, not a keeper.
+- **Monday (last NZ day of a matchup)**: next-week plan with `scripts.games_plan --from 0` against next week's opponent and schedule: light days, best stream-slot occupant, best single swap and two-add relay, win % before/after, timing (drop after his Monday game, add before Tuesday's first lock; a target who also plays Monday fills an open slot for a bonus game).
+- **Thursday**: relay check for the Sat–Mon stretch (`--from` today). **Every day**: rest-of-week usable games both sides.
+- A move must still clear the streaming bar in `league.json` (win-% gain per add) and the add budget.
